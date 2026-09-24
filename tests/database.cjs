@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "..");
 let db;
-let authorization = "Basic " + Buffer.from("staff:test-only-password").toString("base64");
+let authUser = { email_confirmed_at: "2026-01-01", app_metadata: { hhp_staff: true } };
 
 // Execute the actual TS modules, stubbing only Next's request context and HTTP transport.
 function modules() {
@@ -21,7 +21,7 @@ function modules() {
     const req = name => {
       if (name === "server-only") return {};
       if (name === "next/server") return { connection: async () => {} };
-      if (name === "next/headers") return { headers: async () => new Headers({ authorization }) };
+      if (name === "./auth-server") return { authClient: async () => ({ auth: { getUser: async () => ({ data: { user: authUser }, error: null }) } }) };
       if (name.startsWith("@/data/")) return require(path.join(root, "src/data", name.slice(7)));
       if (name.startsWith(".")) return load(path.resolve(path.dirname(file), name + ".ts"));
       return require(name);
@@ -50,8 +50,7 @@ async function main() {
 
   process.env.SUPABASE_URL = "https://test.supabase.co";
   process.env.SUPABASE_SECRET_KEY = "sb_secret_test";
-  process.env.HHP_STAFF_USER = "staff";
-  process.env.HHP_STAFF_PASSWORD = "test-only-password";
+
   global.fetch = async (url, opts) => {
     assert.equal(opts.headers.apikey, "sb_secret_test");
     assert.equal(opts.headers.Authorization, undefined);
@@ -115,13 +114,15 @@ async function main() {
   ])]), /Unknown inventory collection/);
   assert.deepEqual(await transport.readSupabase(), before, "failed transaction must roll back every record");
 
-  authorization = "";
+  authUser = null;
   await assert.rejects(app.getItems(), /Staff sign-in/);
   await assert.rejects(app.setTolerancePct(5), /Staff sign-in/);
-  const access = load("access");
-  assert.equal(access.validStaffAuthorization("Basic " + Buffer.from("staff:wrong").toString("base64")), false);
-  assert.equal(access.validStaffAuthorization("Basic " + Buffer.from("staff:test-only-password").toString("base64")), true);
-  authorization = "Basic " + Buffer.from("staff:test-only-password").toString("base64");
+  authUser = { email_confirmed_at: "2026-01-01", app_metadata: {}, user_metadata: { hhp_staff: true } };
+  await assert.rejects(app.getItems(), /Staff sign-in/);
+  await assert.rejects(app.setTolerancePct(5), /Staff sign-in/);
+  authUser = { app_metadata: { hhp_staff: true } };
+  await assert.rejects(app.getItems(), /Staff sign-in/);
+  authUser = { email_confirmed_at: "2026-01-01", app_metadata: { hhp_staff: true } };
   const actualFetch = global.fetch;
   global.fetch = async () => ({ ok: false, status: 503 });
   await assert.rejects(app.getItems(), /No local fallback/);

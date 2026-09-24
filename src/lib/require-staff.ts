@@ -1,9 +1,9 @@
 import "server-only";
-import { headers } from "next/headers";
-import { accessRequired, validStaffAuthorization } from "./access";
+import { accessRequired, isStaff } from "./access";
+import { authClient } from "./auth-server";
 
 export async function requireStaff() {
-  if (accessRequired() && !validStaffAuthorization((await headers()).get("authorization"))) {
-    throw new Error("Staff sign-in is required.");
-  }
+  if (!accessRequired()) return;
+  const { data: { user }, error } = await (await authClient()).auth.getUser();
+  if (error || !isStaff(user)) throw new Error("Staff sign-in and approval are required.");
 }

@@ -8,9 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "cp node_modules/zxing-wasm/dist/reader/zxing_reader.wasm public/",
-    "test": "node tests/database.cjs"
+    "test": "node tests/auth.cjs && node tests/database.cjs"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.1",
     "barcode-detector": "^3.2.2",
     "next": "16.3.6",
     "qrcode": "^1.5.4",
@@ -19,6 +21,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
@@ -27,7 +30,6 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
-    "typescript": "^5",
-    "@electric-sql/pglite": "^0.5.8"
+    "typescript": "^5"
   }
 }
