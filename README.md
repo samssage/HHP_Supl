@@ -3,7 +3,7 @@
 Web app for York College's Health & Human Performance department. Faculty look up any PE skills
 course, movement skill, room or item and see what equipment exists and exactly where it's stored.
 Staff count storage rooms from their phones (QR label on the door → count screen) to keep the
-inventory verified.
+inventory verified..
 
 ## Run it
 
