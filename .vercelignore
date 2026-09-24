@@ -1,0 +1,9 @@
+private-import/
+data-source/
+src/data/*.json
+supabase/seed.sql
+.data/
+AGENTS.md
+CLAUDE.md
+SETUP.md
+tests/
