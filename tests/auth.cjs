@@ -54,12 +54,14 @@ async function main() {
   assert.equal(response.headers.get('location'), 'https://inventory.example/login');
   assert.match(response.headers.get('cache-control'), /no-store/);
   assert.equal((await proxy(request('/login'))).status, 200);
+  assert.equal((await proxy(request('/'))).status, 200, 'public homepage stays open');
+  assert.equal((await proxy(request('/dashboard'))).status, 307, 'dashboard still requires login');
   assert.equal((await proxy(request('/auth/callback'))).status, 200);
   user = { ...staff, app_metadata: {} };
   response = await proxy(request('/items'));
   assert.equal(response.status, 200);
   response = await proxy(request('/items/new'));
-  assert.equal(response.headers.get('location'), 'https://inventory.example/');
+  assert.equal(response.headers.get('location'), 'https://inventory.example/dashboard');
   assert.equal(access.isAdmin({ ...staff, email: 'sams.frede@gmail.com', app_metadata: {} }), true);
   assert.equal(access.isAdmin({ ...staff, email: 'sams.frede@gmail.com', email_confirmed_at: null }), false);
   assert.equal(access.isAdmin({ ...staff, app_metadata: {}, user_metadata: { hhp_admin: true } }), false);
@@ -82,19 +84,20 @@ async function main() {
   assert.match(await actions.signIn('', form), /Confirm your email/);
   assert.equal(signedOut, true);
   user = staff;
-  await assert.rejects(actions.signIn('', form), /REDIRECT:\/$/);
+  await assert.rejects(actions.signIn('', form), /REDIRECT:\/dashboard$/);
   await assert.rejects(actions.signOut(), /REDIRECT:\/login/);
   user = null;
   form.set('confirm', 'long-test-password');
   assert.match(await actions.setPassword('', form), /expired/);
   assert.match(await actions.signUp('', form), /Check your email/);
   user = staff;
-  await assert.rejects(actions.setPassword('', form), /REDIRECT:\/$/);
+  await assert.rejects(actions.setPassword('', form), /REDIRECT:\/dashboard$/);
   process.env.SUPABASE_PUBLISHABLE_KEY = 'sb_secret_do_not_expose';
   assert.equal(access.authConfig(), null);
   process.env.SUPABASE_PUBLISHABLE_KEY = 'a.' + Buffer.from(JSON.stringify({ role: 'service_role' })).toString('base64url') + '.c';
   assert.equal(access.authConfig(), null, 'service role must never reach callback props');
   assert.equal((await proxy(request('/login'))).status, 200, 'login renders even when unconfigured');
+  assert.equal((await proxy(request('/'))).status, 200, 'marketing page works without auth configuration');
   assert.equal((await proxy(request('/items'))).status, 307);
   console.log('PASS: staff approval, forged metadata, anonymous/invalid sessions, login/logout, password setup, refreshed cookies, fail-closed routes and secret key rejection.');
 }

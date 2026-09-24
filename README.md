@@ -58,7 +58,9 @@ To revoke staff access, remove the metadata grant; to change the initial adminis
 
 | Route | What it does |
 |---|---|
-| `/` | Search + entry points (course, skill, room, equipment) |
+| `/` | Public introduction, three-step walkthrough, login and signup links |
+| `/dashboard` | Signed-in search + entry points (course, skill, room, equipment) |
+| `/login?mode=signup` | Open the account creation form directly |
 | `/courses/[pe151]` | Core equipment by room, "also useful" gear, gaps, printable pull list |
 | `/skills` | Browse by movement skill (throwing, agility, balance…) |
 | `/rooms/[code]` | Everything in a room |

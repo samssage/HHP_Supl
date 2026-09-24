@@ -17,7 +17,7 @@ export async function signIn(_state: string, form: FormData) {
       return "Confirm your email before signing in.";
     }
   } catch { return "Sign-in is temporarily unavailable. Please try again shortly."; }
-  redirect("/");
+  redirect("/dashboard");
 }
 export async function signOut() {
   const client = await authClient();
@@ -35,7 +35,7 @@ export async function setPassword(_state: string, form: FormData) {
     const result = await client.auth.updateUser({ password });
     if (result.error) return "The password could not be saved. Try a different password or request a new invitation.";
   } catch { return "Unable to save your password. Please try again."; }
-  redirect("/");
+  redirect("/dashboard");
 }
 
 export async function signUp(_state: string, form: FormData) {
@@ -54,6 +54,6 @@ export async function signUp(_state: string, form: FormData) {
     if (error) return "Unable to create an account right now. Try signing in if you already have an account, or contact the equipment office.";
     signedIn = !!data.session && isMember(data.user);
   } catch { return "Account signup is temporarily unavailable. Please try again."; }
-  if (signedIn) redirect("/");
+  if (signedIn) redirect("/dashboard");
   return "Check your email to confirm your account, then return here to sign in.";
 }

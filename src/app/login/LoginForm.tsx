@@ -2,8 +2,8 @@
 import { useActionState, useState } from "react";
 import { signIn, setPassword, signUp } from "./actions";
 
-export default function LoginForm({ setup = false }: { setup?: boolean }) {
-  const [signup, setSignup] = useState(false);
+export default function LoginForm({ setup = false, initialSignup = false }: { setup?: boolean; initialSignup?: boolean }) {
+  const [signup, setSignup] = useState(initialSignup);
   const [message, action, pending] = useActionState(setup ? setPassword : signup ? signUp : signIn, "");
   const newPassword = setup || signup;
   const input = "mt-1 w-full rounded-lg border border-line bg-surface px-3 py-3";

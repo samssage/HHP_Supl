@@ -11,7 +11,7 @@ export async function proxy(request: NextRequest) {
     return target;
   };
   const pathname = request.nextUrl.pathname;
-  const publicRoute = pathname === "/login" || pathname === "/auth/callback" || pathname === "/account";
+  const publicRoute = pathname === "/" || pathname === "/login" || pathname === "/auth/callback" || pathname === "/account";
   const config = authConfig();
   if (!config) return finish(publicRoute ? response : NextResponse.redirect(new URL("/login", request.url)));
   const supabase = createServerClient(config.url, config.key, {
@@ -31,7 +31,7 @@ export async function proxy(request: NextRequest) {
       if (user && !error) url.searchParams.set("notice", "confirm");
       return finish(NextResponse.redirect(url));
     }
-    if (!publicRoute && staffRoute(pathname) && !isStaff(user)) return finish(NextResponse.redirect(new URL("/", request.url)));
+    if (!publicRoute && staffRoute(pathname) && !isStaff(user)) return finish(NextResponse.redirect(new URL("/dashboard", request.url)));
   } catch {
     if (!publicRoute) return finish(NextResponse.redirect(new URL("/login?notice=unavailable", request.url)));
   }

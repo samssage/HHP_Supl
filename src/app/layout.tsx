@@ -41,7 +41,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col font-sans">
         <header className="no-print sticky top-0 z-20 border-b border-line bg-surface/95 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
+            <Link href={signedIn ? "/dashboard" : "/"} className="flex items-center gap-2 font-semibold tracking-tight">
               <span className="grid h-8 w-8 place-items-center rounded-md bg-brand text-sm font-bold text-brand-ink">
                 HHP
               </span>
@@ -61,6 +61,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               Count a room
             </Link>}
             {admin && <span className="hidden text-xs text-muted sm:inline">Administrator</span>}
+            {!signedIn && <nav aria-label="Account" className="ml-auto flex shrink-0 items-center gap-2 text-sm"><Link href="/login" className="rounded-md px-3 py-2 font-medium hover:bg-chip">Log in</Link><Link href="/login?mode=signup" className="rounded-md bg-brand px-4 py-2 font-semibold text-brand-ink">Sign up</Link></nav>}
             {signedIn && <form action={signOut} className="ml-auto"><button className="rounded-md px-3 py-2 text-sm text-muted">Sign out</button></form>}
           </div>
         </header>
