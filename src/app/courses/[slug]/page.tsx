@@ -1,3 +1,4 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCourse, getItems, getKitEdits, getLocations } from "@/lib/db";
@@ -7,6 +8,7 @@ import { Badge, Card, ItemList, PageTitle } from "@/components/ui";
 import { PrintButton } from "@/components/PrintButton";
 
 export default async function CoursePage({ params }: PageProps<"/courses/[slug]">) {
+  const staff = await currentStaff();
   const { slug } = await params;
   const course = await getCourse(slug);
   if (!course) notFound();
@@ -66,7 +68,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
         </section>
       )}
 
-      <details className="no-print rounded-lg border border-line bg-surface p-4">
+      {staff && <details className="no-print rounded-lg border border-line bg-surface p-4">
         <summary className="cursor-pointer font-medium">Edit this course’s equipment list</summary>
         <div className="mt-4 space-y-4 text-sm">
           <form action={editKit} className="flex flex-wrap gap-2">
@@ -119,7 +121,7 @@ export default async function CoursePage({ params }: PageProps<"/courses/[slug]"
             </div>
           )}
         </div>
-      </details>
+      </details>}
     </div>
   );
 }

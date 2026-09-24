@@ -5,9 +5,22 @@ export function accessRequired() {
     process.env.VERCEL || process.env.NODE_ENV === "production");
 }
 
-/** Only administrator-controlled metadata grants access, never user_metadata. */
+/** Identity is verified by Supabase getUser; profile metadata never grants roles. */
+export function isMember(user: User | null) {
+  return !!user?.email_confirmed_at && !!user.email && !user.is_anonymous;
+}
+
+export function isAdmin(user: User | null) {
+  const owner = process.env.HHP_ADMIN_EMAIL || "sams.frede@gmail.com";
+  return isMember(user) && (user!.email!.toLowerCase() === owner.toLowerCase() || user!.app_metadata?.hhp_admin === true);
+}
+
 export function isStaff(user: User | null) {
-  return !!user?.email_confirmed_at && user.app_metadata?.hhp_staff === true;
+  return isMember(user) && (isAdmin(user) || user!.app_metadata?.hhp_staff === true);
+}
+
+export function staffRoute(path: string) {
+  return /^\/(audit|audits|signout|staging|scan|in-use)(\/|$)/.test(path) || path === "/items/new";
 }
 
 export function authConfig() {

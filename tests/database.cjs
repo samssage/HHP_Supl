@@ -7,7 +7,7 @@ const vm = require("node:vm");
 const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "..");
 let db;
-let authUser = { email_confirmed_at: "2026-01-01", app_metadata: { hhp_staff: true } };
+let authUser = { id: "staff-id", email: "staff@example.com", email_confirmed_at: "2026-01-01", app_metadata: { hhp_staff: true } };
 
 // Execute the actual TS modules, stubbing only Next's request context and HTTP transport.
 function modules() {
@@ -115,14 +115,31 @@ async function main() {
   assert.deepEqual(await transport.readSupabase(), before, "failed transaction must roll back every record");
 
   authUser = null;
-  await assert.rejects(app.getItems(), /Staff sign-in/);
-  await assert.rejects(app.setTolerancePct(5), /Staff sign-in/);
-  authUser = { email_confirmed_at: "2026-01-01", app_metadata: {}, user_metadata: { hhp_staff: true } };
-  await assert.rejects(app.getItems(), /Staff sign-in/);
-  await assert.rejects(app.setTolerancePct(5), /Staff sign-in/);
-  authUser = { app_metadata: { hhp_staff: true } };
-  await assert.rejects(app.getItems(), /Staff sign-in/);
-  authUser = { email_confirmed_at: "2026-01-01", app_metadata: { hhp_staff: true } };
+  await assert.rejects(app.getItems(), /Sign-in/);
+  await assert.rejects(app.setTolerancePct(5), /Sign-in/);
+  authUser = { id: "faculty-one", email: "faculty1@example.com", email_confirmed_at: "2026-01-01", app_metadata: {}, user_metadata: { hhp_staff: true } };
+  assert.ok((await app.getItems()).length > 0, "confirmed faculty can browse");
+  await assert.rejects(app.setTolerancePct(5), /Staff approval/);
+  await assert.rejects(app.updateItem(item.id, { qty: 99 }), /Staff approval/);
+  await assert.rejects(app.getCheckouts(), /Staff approval/);
+  await assert.rejects(app.getStagings(), /Staff approval/);
+  for (const count of (await app.getAvailability()).values()) { assert.deepEqual(count.checkouts, []); assert.deepEqual(count.stagings, []); }
+  assert.deepEqual(await app.getAudits(), []);
+  const own = await app.createRequest({ person: "Faculty", email: "spoof@example.com", userId: "spoof", courseCode: null, neededAt: new Date().toISOString(), deliverTo: null, lines: [{ itemId: item.id, name: item.name, qty: 1 }], notes: null });
+  assert.equal(own.userId, "faculty-one");
+  assert.equal(own.email, "faculty1@example.com");
+  assert.equal((await app.getRequests()).length, 1);
+  assert.equal((await app.getRequest(own.id)).id, own.id);
+  authUser = { ...authUser, id: "faculty-two", email: "faculty2@example.com" };
+  assert.deepEqual(await app.getRequests(), []);
+  assert.equal(await app.getRequest(own.id), undefined);
+  await assert.rejects(app.setRequestStatus(own.id, "ready", null), /Staff approval/);
+  authUser = { id: "test", email: "test@example.com", app_metadata: { hhp_staff: true } };
+  await assert.rejects(app.getItems(), /Sign-in/);
+  authUser = { id: "sam", email: "sams.frede@gmail.com", email_confirmed_at: "2026-01-01", app_metadata: {} };
+  await app.setTolerancePct(5);
+  assert.ok((await app.getRequests()).length >= 2, "Sam can manage all requests");
+  authUser = { id: "staff-id", email: "staff@example.com", email_confirmed_at: "2026-01-01", app_metadata: { hhp_staff: true } };
   const actualFetch = global.fetch;
   global.fetch = async () => ({ ok: false, status: 503 });
   await assert.rejects(app.getItems(), /No local fallback/);

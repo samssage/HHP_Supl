@@ -4,9 +4,9 @@ import { cookies } from "next/headers";
 import { authConfig } from "./access";
 
 export async function authClient() {
+  const jar = await cookies();
   const config = authConfig();
   if (!config) throw new Error("Supabase login configuration is incomplete.");
-  const jar = await cookies();
   return createServerClient(config.url, config.key, {
     cookies: {
       getAll: () => jar.getAll(),

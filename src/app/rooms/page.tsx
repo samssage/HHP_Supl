@@ -1,13 +1,15 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { getAudits, getItems, getLocations } from "@/lib/db";
 import { Badge, Card, PageTitle } from "@/components/ui";
 
 export default async function RoomsPage() {
+  const staff = await currentStaff();
   const [locations, items, audits] = await Promise.all([getLocations(), getItems(), getAudits()]);
   return (
     <div>
       <PageTitle eyebrow="By room" title="Rooms & storage">
-        Open a room to see what should be there, or start a count to confirm it.
+        Open a room to see what equipment is stored there.
       </PageTitle>
       <div className="grid gap-3 sm:grid-cols-2">
         {locations.map((l) => {
@@ -24,10 +26,10 @@ export default async function RoomsPage() {
                 {l.description && <p className="text-sm text-muted">{l.description}</p>}
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
                   {toVerify > 0 ? <Badge tone="warn">{toVerify} to verify</Badge> : <Badge tone="good">All verified</Badge>}
-                  <Badge>{last ? `Last counted ${new Date(last.performedAt).toLocaleDateString()}` : "Never counted"}</Badge>
+                  {staff && <Badge>{last ? `Last counted ${new Date(last.performedAt).toLocaleDateString()}` : "Never counted"}</Badge>}
                 </div>
               </Link>
-              {l.auditable && (
+              {staff && l.auditable && (
                 <Link href={`/audit/${l.code}`} className="mt-3 rounded-md bg-accent py-2 text-center text-sm font-medium text-white">
                   Count this room
                 </Link>

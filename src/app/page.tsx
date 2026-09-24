@@ -1,3 +1,4 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { getCourses, getItems, getLocations } from "@/lib/db";
 import { Card, SearchBox } from "@/components/ui";
@@ -10,6 +11,7 @@ const ENTRY = [
 ];
 
 export default async function Home() {
+  const staff = await currentStaff();
   const [items, courses, locations] = await Promise.all([getItems(), getCourses(), getLocations()]);
   const tracked = items.filter((i) => !i.isReference && i.condition !== "Retired");
   const toVerify = tracked.filter((i) => i.condition === "To Verify").length;
@@ -44,7 +46,7 @@ export default async function Home() {
         <Stat label="Verified" value={`${verifiedPct}%`} hint={`${toVerify} still “To Verify”`} />
       </section>
 
-      <Card className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center">
+      {staff ? <Card className="flex flex-col items-start gap-3 p-5 sm:flex-row sm:items-center">
         <div className="flex-1">
           <h2 className="font-semibold">Walking into a storage room?</h2>
           <p className="text-sm text-muted">
@@ -55,7 +57,7 @@ export default async function Home() {
         <Link href="/rooms" className="rounded-lg bg-accent px-4 py-2 font-medium text-white">
           Count a room
         </Link>
-      </Card>
+      </Card> : <Card className="p-5"><h2 className="font-semibold">Need equipment for a class?</h2><Link href="/requests/new" className="mt-3 inline-block rounded-lg bg-accent px-4 py-2 font-medium text-white">Request equipment</Link></Card>}
     </div>
   );
 }

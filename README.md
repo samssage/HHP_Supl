@@ -28,12 +28,22 @@ With Supabase configured, mutable records persist through server-only RPCs with 
 revision checks. Local development without credentials retains the JSON store.
 Production requires Supabase. The public `/login` page uses individual Supabase email/password accounts; the old HHP_STAFF_USER/PASSWORD variables are no longer used.
 
-## Staff login setup
+## Accounts and access
 
-1. Set the Supabase URL, server-only secret, and publishable (or legacy anon) key in Vercel; see `.env.example`. Redeploy after updating variables.
-2. In Supabase Authentication URL Configuration, set the Site URL to the app's final production URL followed by `/auth/callback`. Allow that exact callback URL under Redirect URLs. This handles dashboard invitations and password recovery links.
-3. Invite approved staff through Supabase Authentication → Users. Staff follow their invitation to choose a password. Keep public signups disabled for this staff-only app.
-4. Grant each approved account `app_metadata.hhp_staff = true` using Supabase's admin API, or run the SQL below for the exact approved email. Users cannot grant this role through their profile. Verify the returned email before finishing onboarding.
+Anyone can create an account and, after confirming their email, browse inventory and submit equipment requests. Each member sees only their own requests. Staff can manage all requests, edit inventory, count rooms, and handle sign-outs and staging. Checkout names, staging notes, and count history remain restricted to staff.
+
+The initial administrator is the confirmed Supabase account for `sams.frede@gmail.com`. This is checked against the current user returned by Supabase, not a submitted form or editable profile. `HHP_ADMIN_EMAIL` can override the initial administrator email on another deployment. Accounts with administrator-controlled `app_metadata.hhp_staff = true` or `app_metadata.hhp_admin = true` also have staff access. Public signups never grant these metadata roles.
+
+1. Configure the Supabase URL, server-only database secret and public publishable/anon login key in Vercel (see `.env.example`), then redeploy.
+2. In Supabase Authentication → Sign In / Providers, allow new users to sign up and keep email confirmation enabled.
+3. Under URL Configuration, allow `https://YOUR_APP_DOMAIN/auth/callback` for each production domain people use. Set the Site URL to the primary production domain followed by `/auth/callback`, so dashboard invitations and password recovery also work. Signup requests include their own origin as the callback; Supabase validates it against the allowlist.
+4. Sam opens `/login`, selects **Create an account**, uses `sams.frede@gmail.com`, chooses his own password, and confirms his email. Once confirmed, the app recognizes him as administrator automatically. Existing confirmed accounts can sign in directly.
+
+Passwords are entered by the account owner. Do not put passwords or service-role keys in code or chat. The old shared HHP_STAFF_USER/PASSWORD variables are no longer used.
+
+The proxy refreshes sessions and redirects anonymous visitors to login. Inventory writes independently verify staff access; reads require a confirmed account. Request ownership is set server-side from the verified user ID, and the user's account email overrides any submitted address. Database tables and RPCs remain inaccessible to browser roles.
+
+Additional staff can be granted a role through Supabase's admin API or SQL Editor after the administrator approves their email:
 
 ```sql
 update auth.users
@@ -42,9 +52,7 @@ where lower(email) = lower('APPROVED_STAFF_EMAIL')
 returning id, email;
 ```
 
-To revoke access, remove `hhp_staff` from `raw_app_meta_data`. The app checks the current user with Supabase on data access, so a previously issued session does not retain a removed staff grant. Password reset emails can be sent from Supabase's user dashboard and use the same callback/password setup screen. No public signup form is provided, and ordinary authenticated accounts cannot read inventory.
-
-The proxy refreshes sessions and redirects unauthenticated visitors to `/login`. Every inventory read/write independently checks the verified staff role before using the server-only database RPCs.
+To revoke staff access, remove the metadata grant; to change the initial administrator, change HHP_ADMIN_EMAIL and redeploy. Password reset emails can be sent from Supabase's user dashboard and return to the password setup screen.
 
 ## Pages
 

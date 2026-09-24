@@ -1,3 +1,4 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { getItems, getLocations } from "@/lib/db";
 import { searchItems } from "@/lib/search";
@@ -9,6 +10,7 @@ function one(v: string | string[] | undefined) {
 }
 
 export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
+  const staff = await currentStaff();
   const sp = await searchParams;
   const q = one(sp.q), cat = one(sp.category), loc = one(sp.location), cond = one(sp.condition);
   const [all, locations] = await Promise.all([getItems(), getLocations()]);
@@ -28,9 +30,9 @@ export default async function ItemsPage({ searchParams }: PageProps<"/items">) {
             {items.length} of {all.length} items
           </PageTitle>
         </div>
-        <Link href="/items/new" className="rounded-lg bg-brand px-4 py-2 font-medium text-brand-ink">
+        {staff && <Link href="/items/new" className="rounded-lg bg-brand px-4 py-2 font-medium text-brand-ink">
           + Log new delivery
-        </Link>
+        </Link>}
       </div>
       <form className="mb-4 grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
         <input name="q" defaultValue={q} placeholder="Filter by name, color, brand…" className="rounded-md border border-line bg-surface px-3 py-2 text-sm" />

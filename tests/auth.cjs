@@ -6,12 +6,13 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const { NextRequest, NextResponse } = require('next/server');
 let user = null, authError = null, rotate = false, signedOut = false;
-const staff = { id: 'test', email_confirmed_at: '2026-01-01', app_metadata: { hhp_staff: true } };
+const staff = { id: 'test', email: 'staff@example.com', email_confirmed_at: '2026-01-01', app_metadata: { hhp_staff: true } };
 const auth = {
   getUser: async () => ({ data: { user }, error: authError }),
   signInWithPassword: async () => ({ data: { user }, error: authError }),
   signOut: async () => { signedOut = true; return { error: null }; },
   updateUser: async () => ({ error: authError }),
+  signUp: async () => ({ data: { user: null, session: null }, error: null }),
 };
 function load(file) {
   const filename = path.resolve(__dirname, '../src', file + '.ts');
@@ -22,6 +23,7 @@ function load(file) {
   const req = name => {
     if (name === 'server-only') return {};
     if (name === 'next/server') return { NextRequest, NextResponse };
+    if (name === 'next/headers') return { headers: async () => new Headers({ origin: 'https://inventory.example' }) };
     if (name === 'next/navigation') return { redirect: url => { throw new Error('REDIRECT:' + url); } };
     if (name === '@/lib/auth-server') return { authClient: async () => ({ auth }) };
     if (name === '@supabase/ssr') return { createServerClient: (_url, _key, options) => ({ auth: {
@@ -55,7 +57,12 @@ async function main() {
   assert.equal((await proxy(request('/auth/callback'))).status, 200);
   user = { ...staff, app_metadata: {} };
   response = await proxy(request('/items'));
-  assert.match(response.headers.get('location'), /notice=approval/);
+  assert.equal(response.status, 200);
+  response = await proxy(request('/items/new'));
+  assert.equal(response.headers.get('location'), 'https://inventory.example/');
+  assert.equal(access.isAdmin({ ...staff, email: 'sams.frede@gmail.com', app_metadata: {} }), true);
+  assert.equal(access.isAdmin({ ...staff, email: 'sams.frede@gmail.com', email_confirmed_at: null }), false);
+  assert.equal(access.isAdmin({ ...staff, app_metadata: {}, user_metadata: { hhp_admin: true } }), false);
   rotate = true;
   user = staff;
   response = await proxy(request('/items'));
@@ -72,7 +79,7 @@ async function main() {
   const actions = load('app/login/actions');
   const form = new FormData(); form.set('email', 'staff@example.com'); form.set('password', 'long-test-password');
   user = null;
-  assert.match(await actions.signIn('', form), /approval/);
+  assert.match(await actions.signIn('', form), /Confirm your email/);
   assert.equal(signedOut, true);
   user = staff;
   await assert.rejects(actions.signIn('', form), /REDIRECT:\/$/);
@@ -80,6 +87,7 @@ async function main() {
   user = null;
   form.set('confirm', 'long-test-password');
   assert.match(await actions.setPassword('', form), /expired/);
+  assert.match(await actions.signUp('', form), /Check your email/);
   user = staff;
   await assert.rejects(actions.setPassword('', form), /REDIRECT:\/$/);
   process.env.SUPABASE_PUBLISHABLE_KEY = 'sb_secret_do_not_expose';

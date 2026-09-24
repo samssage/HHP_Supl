@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { authClient } from "@/lib/auth-server";
-import { accessRequired, authConfig, isStaff } from "@/lib/access";
+import { accessRequired, authConfig, isStaff, isMember, isAdmin } from "@/lib/access";
 import { signOut } from "./login/actions";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -21,16 +21,18 @@ const NAV = [
   { href: "/skills", label: "Skills" },
   { href: "/rooms", label: "Rooms" },
   { href: "/items", label: "Equipment" },
-  { href: "/audits", label: "Counts" },
+  { href: "/requests", label: "Requests" },
 ];
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  let signedIn = false;
+  let signedIn = !accessRequired();
+  let admin = false;
   let staff = !accessRequired();
   if (authConfig()) {
     try {
       const { data: { user }, error } = await (await authClient()).auth.getUser();
-      signedIn = !error && !!user;
+      signedIn = !error && isMember(user);
+      admin = !error && isAdmin(user);
       staff = !error && isStaff(user);
     } catch { /* Public login remains available during an auth outage. */ }
   }
@@ -45,8 +47,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               </span>
               <span className="hidden sm:inline">Equipment Finder</span>
             </Link>
-            {staff && <nav className="ml-auto hidden gap-1 text-sm md:flex">
-              {NAV.map((n) => (
+            {signedIn && <nav className="ml-auto hidden gap-1 text-sm md:flex">
+              {[...NAV].map((n) => (
                 <Link key={n.href} href={n.href} className="rounded-md px-3 py-1.5 text-muted hover:bg-chip hover:text-ink">
                   {n.label}
                 </Link>
@@ -58,12 +60,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             >
               Count a room
             </Link>}
+            {admin && <span className="hidden text-xs text-muted sm:inline">Administrator</span>}
             {signedIn && <form action={signOut} className="ml-auto"><button className="rounded-md px-3 py-2 text-sm text-muted">Sign out</button></form>}
           </div>
         </header>
+        {staff && <div className="no-print mx-auto flex w-full max-w-5xl flex-wrap gap-4 px-4 pt-3 text-sm"><Link href="/in-use">In use</Link><Link href="/audits">Counts</Link><Link href="/signout/new">Sign out equipment</Link><Link href="/staging/new">Stage equipment</Link><Link href="/scan">Scan</Link></div>}
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-6 md:pb-12">{children}</main>
-        {staff && <nav className="no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface text-xs md:hidden">
-          {NAV.map((n) => (
+        {signedIn && <nav className="no-print fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface text-xs md:hidden">
+          {[...NAV].map((n) => (
             <Link key={n.href} href={n.href} className="py-3 text-center text-muted active:bg-chip">
               {n.label}
             </Link>

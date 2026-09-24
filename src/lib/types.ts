@@ -102,6 +102,7 @@ export type Checkout = {
  * or free text for things we don't own yet (e.g. "juggling balls").
  */
 export type EquipmentRequest = {
+  userId?: string | null;
   id: string;
   person: string;
   email: string | null;

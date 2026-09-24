@@ -7,7 +7,7 @@ import type { Audit, AuditLine, BatchLine, Checkout, Course, Disposal, Equipment
 
 import type { Store } from "./store-types";
 import { usesSupabase, readSupabase, commitSupabase } from "./supabase-store";
-import { requireStaff } from "./require-staff";
+import { currentStaff, requireMember, requireStaff } from "./require-staff";
 
 // Reads and writes stay behind this server-only boundary.
 const STORE_PATH = path.join(process.cwd(), ".data", "store.json");
@@ -24,7 +24,7 @@ let writeChain: Promise<unknown> = Promise.resolve();
 
 async function readStore(): Promise<Store> {
   await connection();
-  await requireStaff();
+  await requireMember();
   if (usesSupabase()) return (await readSupabase()).store;
   const [seedItems, courses, locations, disposals] = await Promise.all([
     localReference<Item[]>("items"), localReference<Course[]>("courses"),
@@ -62,9 +62,10 @@ async function readStore(): Promise<Store> {
   }
 }
 
-function mutate<T>(fn: (s: Store) => T): Promise<T> {
+function mutate<T>(fn: (s: Store) => T, memberRequest = false): Promise<T> {
   const run = writeChain.then(async () => {
-    await requireStaff();
+    if (memberRequest) await requireMember();
+    else await requireStaff();
     if (usesSupabase()) {
       for (let attempt = 0; attempt < 5; attempt++) {
         const before = await readSupabase();
@@ -136,6 +137,7 @@ export async function getLocations(): Promise<Location[]> {
 }
 
 export async function getCheckouts(opts: { activeOnly?: boolean; itemId?: string } = {}) {
+  await requireStaff();
   let list = (await readStore()).checkouts;
   if (opts.activeOnly) list = list.filter((c) => !c.returnedAt);
   if (opts.itemId) list = list.filter((c) => c.lines.some((l) => l.itemId === opts.itemId));
@@ -143,26 +145,32 @@ export async function getCheckouts(opts: { activeOnly?: boolean; itemId?: string
 }
 
 export async function getCheckout(id: string) {
+  await requireStaff();
   return (await readStore()).checkouts.find((c) => c.id === id);
 }
 
 export async function getRequests(opts: { openOnly?: boolean } = {}) {
+  const user = await requireMember();
+  const staff = await currentStaff();
   let list = (await readStore()).requests;
+  if (!staff) list = list.filter(r => r.userId === user?.id);
   if (opts.openOnly) list = list.filter((r) => r.status === "pending" || r.status === "ready");
   return [...list].sort((a, b) => a.neededAt.localeCompare(b.neededAt));
 }
 
 export async function getRequest(id: string) {
-  return (await readStore()).requests.find((r) => r.id === id);
+  return (await getRequests()).find((r) => r.id === id);
 }
 
 export async function getStagings(opts: { activeOnly?: boolean } = {}) {
+  await requireStaff();
   let list = (await readStore()).stagings;
   if (opts.activeOnly) list = list.filter((s) => !s.returnedAt);
   return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function getStaging(id: string) {
+  await requireStaff();
   return (await readStore()).stagings.find((s) => s.id === id);
 }
 
@@ -184,11 +192,13 @@ export async function getDisposals(): Promise<Disposal[]> {
 }
 
 export async function getAudits(): Promise<Audit[]> {
+  if (!await currentStaff()) { await requireMember(); return []; }
   const audits = (await readStore()).audits;
   return [...audits].sort((a, b) => b.performedAt.localeCompare(a.performedAt));
 }
 
 export async function getAudit(id: string): Promise<Audit | undefined> {
+  await requireStaff();
   return (await readStore()).audits.find((a) => a.id === id);
 }
 
@@ -316,10 +326,19 @@ export function returnStaging(id: string, person: string, returned: Record<strin
   });
 }
 
-export function createRequest(input: Omit<EquipmentRequest, "id" | "createdAt" | "status" | "statusNote" | "checkoutId">) {
+export async function createRequest(input: Omit<EquipmentRequest, "id" | "createdAt" | "status" | "statusNote" | "checkoutId" | "userId">) {
+  const user = await requireMember();
   return mutate((s) => {
+    if (!input.person.trim() || !input.lines.length || input.lines.length > 100) throw new Error("Add your name and 1–100 request items.");
+    if (!Number.isFinite(Date.parse(input.neededAt))) throw new Error("Choose a valid request date.");
+    for (const line of input.lines) {
+      assertCount(line.qty, "Requested quantity");
+      if (!line.name.trim() || line.qty < 1) throw new Error("Each request item needs a name and positive quantity.");
+    }
     const r: EquipmentRequest = {
       ...input,
+      userId: user?.id ?? null,
+      email: user?.email ?? input.email,
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       status: "pending",
@@ -328,7 +347,7 @@ export function createRequest(input: Omit<EquipmentRequest, "id" | "createdAt" |
     };
     s.requests.push(r);
     return r;
-  });
+  }, true);
 }
 
 export function setRequestStatus(id: string, status: EquipmentRequest["status"], note: string | null) {
@@ -479,4 +498,12 @@ export function saveAudit(input: {
     s.audits.push(audit);
     return audit;
   });
+}
+
+/** Counts only: faculty do not receive checkout names, notes or contact details. */
+export async function getAvailability() {
+  const store = await readStore();
+  const availability = awayByItem(store.checkouts, store.stagings);
+  for (const value of availability.values()) { value.checkouts = []; value.stagings = []; }
+  return availability;
 }

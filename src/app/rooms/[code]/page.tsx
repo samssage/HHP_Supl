@@ -1,9 +1,11 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getItems, getLocations } from "@/lib/db";
 import { Card, ItemList, PageTitle } from "@/components/ui";
 
 export default async function RoomPage({ params }: PageProps<"/rooms/[code]">) {
+  const staff = await currentStaff();
   const { code } = await params;
   const room = (await getLocations()).find((l) => l.code === decodeURIComponent(code));
   if (!room) notFound();
@@ -18,7 +20,7 @@ export default async function RoomPage({ params }: PageProps<"/rooms/[code]">) {
             {room.description} · {items.length} items on record
           </PageTitle>
         </div>
-        {room.auditable && (
+        {staff && room.auditable && (
           <Link href={`/audit/${room.code}`} className="rounded-lg bg-accent px-4 py-2 font-medium text-white">
             Count this room
           </Link>

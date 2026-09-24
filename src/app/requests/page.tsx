@@ -1,3 +1,4 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { getRequests } from "@/lib/db";
 import { Card, PageTitle } from "@/components/ui";
@@ -5,6 +6,7 @@ import { RequestBadges } from "@/components/RequestBadges";
 import type { EquipmentRequest } from "@/lib/types";
 
 export default async function RequestsPage() {
+  const staff = await currentStaff();
   const all = await getRequests();
   const open = all.filter((r) => r.status === "pending" || r.status === "ready");
   const closed = all.filter((r) => !open.includes(r)).reverse().slice(0, 20);
@@ -13,8 +15,8 @@ export default async function RequestsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start gap-4">
         <div className="flex-1">
-          <PageTitle eyebrow="Equipment office" title="Requests">
-            Soonest first. Pull the list, mark it ready, then hand it over to turn it into a sign-out.
+          <PageTitle eyebrow="Equipment office" title={staff ? "Requests" : "My requests"}>
+            {staff ? "Review requests, mark equipment ready, and record sign-outs." : "See the status of equipment you have requested."}
           </PageTitle>
         </div>
         <Link href="/requests/new" className="rounded-lg bg-accent px-4 py-2 font-medium text-white">New request</Link>

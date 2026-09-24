@@ -25,7 +25,7 @@ export default function CompleteInvitation({ url, publicKey }: { url: string; pu
       } else throw new Error("Missing invitation");
       const { data: { user }, error } = await client.auth.getUser();
       if (error || !user) throw new Error("Invalid session");
-      window.location.replace("/account");
+      window.location.replace(query.get("flow") === "signup" ? "/" : "/account");
     }
     complete().catch(() => setMessage("This link is invalid or has expired. Ask the equipment office for a new invitation."));
   }, [url, publicKey]);

@@ -1,3 +1,4 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAudits, getCourses, getItem, getKitEdits, getItems, getLocations } from "@/lib/db";
@@ -7,6 +8,7 @@ import { saveItem } from "@/app/actions";
 import { Badge, Card, PageTitle } from "@/components/ui";
 
 export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
+  const staff = await currentStaff();
   const { id } = await params;
   const item = await getItem(decodeURIComponent(id));
   if (!item) notFound();
@@ -78,7 +80,7 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
           )}
         </Card>
 
-        <Card className="p-4">
+        {staff && <Card className="p-4">
           <h2 className="mb-3 font-semibold">Update</h2>
           <form action={saveItem} className="grid grid-cols-2 gap-3 text-sm">
             <input type="hidden" name="id" value={item.id} />
@@ -99,10 +101,10 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
             <label className="col-span-2">Notes<textarea name="notes" defaultValue={item.notes ?? ""} rows={2} className={input} /></label>
             <button className="col-span-2 rounded-md bg-brand py-2 font-medium text-brand-ink">Save changes</button>
           </form>
-        </Card>
+        </Card>}
       </div>
 
-      <Card>
+      {staff && <Card>
         <h2 className="border-b border-line px-4 py-2.5 font-semibold">Count history</h2>
         {history.length === 0 ? (
           <p className="px-4 py-4 text-sm text-muted">Not counted yet.</p>
@@ -118,7 +120,7 @@ export default async function ItemPage({ params }: PageProps<"/items/[id]">) {
             ))}
           </div>
         )}
-      </Card>
+      </Card>}
     </div>
   );
 }

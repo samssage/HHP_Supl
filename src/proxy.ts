@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
-import { accessRequired, authConfig, isStaff } from "./lib/access";
+import { accessRequired, authConfig, isStaff, isMember, staffRoute } from "./lib/access";
 
 export async function proxy(request: NextRequest) {
   if (!accessRequired()) return NextResponse.next();
@@ -26,11 +26,12 @@ export async function proxy(request: NextRequest) {
   });
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
-    if (!publicRoute && (error || !isStaff(user))) {
+    if (!publicRoute && (error || !isMember(user))) {
       const url = new URL("/login", request.url);
-      if (user && !error) url.searchParams.set("notice", "approval");
+      if (user && !error) url.searchParams.set("notice", "confirm");
       return finish(NextResponse.redirect(url));
     }
+    if (!publicRoute && staffRoute(pathname) && !isStaff(user)) return finish(NextResponse.redirect(new URL("/", request.url)));
   } catch {
     if (!publicRoute) return finish(NextResponse.redirect(new URL("/login?notice=unavailable", request.url)));
   }

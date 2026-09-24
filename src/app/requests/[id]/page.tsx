@@ -1,3 +1,4 @@
+import { currentStaff } from "@/lib/require-staff";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRequest } from "@/lib/db";
@@ -6,6 +7,7 @@ import { Card, PageTitle } from "@/components/ui";
 import { RequestBadges } from "@/components/RequestBadges";
 
 export default async function RequestPage({ params }: PageProps<"/requests/[id]">) {
+  const staff = await currentStaff();
   const { id } = await params;
   const r = await getRequest(id);
   if (!r) notFound();
@@ -44,7 +46,7 @@ export default async function RequestPage({ params }: PageProps<"/requests/[id]"
       {r.notes && <Card className="p-4 text-sm">“{r.notes}”{r.email && <span className="text-muted"> — {r.email}</span>}</Card>}
       {r.statusNote && <p className="text-sm text-muted">Office note: {r.statusNote}</p>}
 
-      {open && (
+      {staff && open && (
         <Card className="space-y-3 p-4">
           <h2 className="font-semibold">Equipment office</h2>
           <div className="flex flex-wrap gap-2">
@@ -67,7 +69,7 @@ export default async function RequestPage({ params }: PageProps<"/requests/[id]"
           </form>
         </Card>
       )}
-      {r.checkoutId && (
+      {staff && r.checkoutId && (
         <Link href={`/signout/${r.checkoutId}`} className="text-sm underline">View the sign-out →</Link>
       )}
     </div>

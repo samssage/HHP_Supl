@@ -1,6 +1,6 @@
-import { getCheckouts, getCourse, getCourses, getItems, getKitEdits, getLocations, getStagings } from "@/lib/db";
+import { getAvailability, getCourse, getCourses, getItems, getKitEdits, getLocations } from "@/lib/db";
 import { buildKit } from "@/lib/kit";
-import { awayByItem, toPickItems } from "@/lib/usage";
+import { toPickItems } from "@/lib/usage";
 import { submitRequest } from "@/app/actions";
 import { BatchBuilder, type Line } from "@/components/BatchBuilder";
 import { Card, PageTitle } from "@/components/ui";
@@ -8,8 +8,8 @@ import { Card, PageTitle } from "@/components/ui";
 export default async function NewRequestPage({ searchParams }: PageProps<"/requests/new">) {
   const sp = await searchParams;
   const courseSlug = typeof sp.course === "string" ? sp.course : null;
-  const [items, courses, checkouts, stagings, locations] = await Promise.all([
-    getItems(), getCourses(), getCheckouts({ activeOnly: true }), getStagings({ activeOnly: true }), getLocations(),
+  const [items, courses, away, locations] = await Promise.all([
+    getItems(), getCourses(), getAvailability(), getLocations(),
   ]);
   const course = courseSlug ? await getCourse(courseSlug) : undefined;
   let initial: Line[] = [];
@@ -31,7 +31,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
       <Card className="p-4">
         <form action={submitRequest} className="grid gap-4 text-sm sm:grid-cols-2">
           <label>Your name *<input name="person" required className={input} /></label>
-          <label>Email<input name="email" type="email" className={input} /></label>
+          <p className="self-end py-2 text-muted">Your account email will be attached to this request.</p>
           <label className="sm:col-span-2">Course
             <select name="course" defaultValue={course?.code ?? ""} className={input}>
               <option value="">Not for a specific course</option>
@@ -49,7 +49,7 @@ export default async function NewRequestPage({ searchParams }: PageProps<"/reque
           </label>
           <div className="sm:col-span-2">
             <p className="mb-2 font-medium">What do you need? *</p>
-            <BatchBuilder items={toPickItems(items, awayByItem(checkouts, stagings))} initial={initial} allowFreeText />
+            <BatchBuilder items={toPickItems(items, away)} initial={initial} allowFreeText />
           </div>
           <label className="sm:col-span-2">Anything else?<textarea name="notes" rows={2} className={input} placeholder="e.g. It’s for 6 class sessions through October" /></label>
           <button className="rounded-md bg-accent py-2.5 font-semibold text-white sm:col-span-2">Send request</button>
